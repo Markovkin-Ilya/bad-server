@@ -191,9 +191,11 @@ const updateCurrentUser = async (
     next: NextFunction
 ) => {
     const userId = res.locals.user._id
+    const { name, email } = req.body
     try {
-        const updatedUser = await User.findByIdAndUpdate(userId, req.body, {
+        const updatedUser = await User.findByIdAndUpdate(userId, { name, email }, {
             new: true,
+            runValidators: true,
         }).orFail(
             () =>
                 new NotFoundError(
