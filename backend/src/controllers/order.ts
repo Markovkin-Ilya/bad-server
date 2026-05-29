@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from 'express'
 import { FilterQuery, Error as MongooseError, Types } from 'mongoose'
+import sanitizeHtml from 'sanitize-html'
 import BadRequestError from '../errors/bad-request-error'
 import NotFoundError from '../errors/not-found-error'
 import Order, { IOrder } from '../models/order'
@@ -30,13 +31,15 @@ export const getOrders = async (
 
         const filters: FilterQuery<Partial<IOrder>> = {}
 
-        if (status) {
-            if (typeof status === 'object') {
-                Object.assign(filters, status)
+        if (typeof sortField !== 'string' || typeof sortOrder !== 'string') {
+            return next(new BadRequestError('Некорректные данные'))
+        }
+
+         if (status) {
+            if (typeof status !== 'string') {
+                throw new BadRequestError('Некорректный status')
             }
-            if (typeof status === 'string') {
-                filters.status = status
-            }
+            filters.status = status
         }
 
         if (totalAmountFrom) {
@@ -114,10 +117,12 @@ export const getOrders = async (
             sort[sortField as string] = sortOrder === 'desc' ? -1 : 1
         }
 
+        const normalLimit = Math.min(Number(limit) || 10, 10)
+
         aggregatePipeline.push(
             { $sort: sort },
-            { $skip: (Number(page) - 1) * Number(limit) },
-            { $limit: Number(limit) },
+            { $skip: (Number(page) - 1) * Number(normalLimit) },
+            { $limit: Number(normalLimit) },
             {
                 $group: {
                     _id: '$_id',
@@ -133,7 +138,7 @@ export const getOrders = async (
 
         const orders = await Order.aggregate(aggregatePipeline)
         const totalOrders = await Order.countDocuments(filters)
-        const totalPages = Math.ceil(totalOrders / Number(limit))
+        const totalPages = Math.ceil(totalOrders / Number(normalLimit))
 
         res.status(200).json({
             orders,
@@ -141,7 +146,7 @@ export const getOrders = async (
                 totalOrders,
                 totalPages,
                 currentPage: Number(page),
-                pageSize: Number(limit),
+                pageSize: Number(normalLimit),
             },
         })
     } catch (error) {
@@ -304,6 +309,10 @@ export const createOrder = async (
             }
             return basket.push(product)
         })
+        const sanitizedComment = sanitizeHtml(comment || '', {
+            allowedTags: [],
+            allowedAttributes: {},
+        })
         const totalBasket = basket.reduce((a, c) => a + c.price, 0)
         if (totalBasket !== total) {
             return next(new BadRequestError('Неверная сумма заказа'))
@@ -315,7 +324,7 @@ export const createOrder = async (
             payment,
             phone,
             email,
-            comment,
+            comment: sanitizedComment,
             customer: userId,
             deliveryAddress: address,
         })
