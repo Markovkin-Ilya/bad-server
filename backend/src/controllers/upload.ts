@@ -48,6 +48,7 @@ export const uploadFile = async (
         const fileName = process.env.UPLOAD_PATH
             ? `/${process.env.UPLOAD_PATH}/${newFile.filename}`
             : `/${newFile.filename}`
+            
         return res.status(constants.HTTP_STATUS_CREATED).send({
             fileName,
         })
