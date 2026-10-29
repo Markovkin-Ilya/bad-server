@@ -14,27 +14,16 @@ const customerRouter = Router()
 
 customerRouter.get('/', auth, roleGuardMiddleware(Role.Admin), getCustomers)
 customerRouter.get(
-    '/:id',
+    '/:id',  
     celebrate({
         params: Joi.object({
             id: Joi.string().hex().length(24).required(),
         }),
     }),
-    auth,
-    roleGuardMiddleware(Role.Admin),
+    auth, 
     getCustomerById,
 )
-customerRouter.patch(
-    '/:id',
-    auth,
-    roleGuardMiddleware(Role.Admin),
-    updateCustomer
-)
-customerRouter.delete(
-    '/:id',
-    auth,
-    roleGuardMiddleware(Role.Admin),
-    deleteCustomer
-)
+customerRouter.patch('/:id', auth, updateCustomer)
+customerRouter.delete('/:id', auth, deleteCustomer)
 
 export default customerRouter
